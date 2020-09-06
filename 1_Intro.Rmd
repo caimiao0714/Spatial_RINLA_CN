@@ -1,0 +1,88 @@
+---
+title: "引言"
+author:
+  - 蔡苗
+documentclass: ctexart
+output:
+  rticles::ctex:
+    fig_caption: yes
+    number_sections: yes
+    toc: yes
+classoption: "hyperref,"
+geometry: margin=1.5cm
+---
+
+# 引言
+
+```{r tidy = TRUE}
+pacman::p_load(sf, ggplot2, dplyr, showtext, lubridate)
+Sys.setlocale("LC_ALL","Chinese")
+crs_cn = '+init=epsg:4508'
+
+# add fonts
+font_add("NotoSerif", "NotoSerifCJKsc-Regular.otf")
+font_add("NotoSerifBold", "NotoSerifCJKsc-Bold.otf")
+font_add("NotoSansMono", "NotoSansMonoCJKsc-Regular.otf")
+font_add("NotoSansCJK", "NotoSansCJKsc-Regular.otf")
+showtext_auto()
+```
+
+湖北市级地理边界图
+
+```{r}
+Hubei = read_sf("Shapefile/Hubei/Hubei.shp")
+
+# 选取市边界，并且市名中的将较长后缀去掉
+Hubei_City = filter(Hubei, Layer == '市') %>% 
+  mutate(Name = gsub('市|林区|土家族苗族自治州', '', Name))
+Hubei_Cnty = filter(Hubei, Layer == '区县') # 选取区县边界
+
+
+ggplot() + 
+  #geom_sf(data = Hubei_Cnty, fill = NA, size = 0.3, color = 'gray70') + 
+  geom_sf(data = Hubei_City, fill = NA, size = 1, color = 'black') + 
+  geom_sf_text(data = Hubei_City, aes(label = Name), 
+               colour = "blue", family = "NotoSerifBold", size = 7) +
+  theme_void() + 
+  coord_sf(crs = st_crs(crs_cn))
+
+ggsave('Figures/1Intro/Hubei_City.pdf', width = 10, height = 6.18)
+```
+
+湖北省市级新冠肺炎确认人数地理分布
+
+```{r}
+pacman::p_load(data.table)
+COVID19 = readr::read_csv(
+  'https://raw.githubusercontent.com/BlankerL/DXY-COVID-19-Data/master/csv/DXYArea.csv') %>% 
+  as.data.table() %>% 
+  .[countryName == '中国'] 
+
+
+d = COVID19 %>% 
+  .[,.(fdate = date(updateTime), updateTime, provinceName, province_zipCode, 
+       province_confirmedCount, province_deadCount,
+       cityName, city_zipCode, city_confirmedCount, city_deadCount)] %>% 
+  .[order(provinceName, cityName, -updateTime)] %>% 
+  .[,.SD[1], .(provinceName, cityName, fdate)]
+
+dp = d[is.na(cityName),]
+
+  
+
+# 选取市边界，并且市名中的将较长后缀去掉
+Hubei_City = filter(d, Layer == '市') %>% 
+  mutate(Name = gsub('市|林区|土家族苗族自治州', '', Name))
+Hubei_Cnty = filter(d, Layer == '区县') # 选取区县边界
+
+
+ggplot() + 
+  #geom_sf(data = Hubei_Cnty, fill = NA, size = 0.3, color = 'gray70') + 
+  geom_sf(data = Hubei_City, fill = NA, size = 1, color = 'black') + 
+  geom_sf_text(data = Hubei_City, aes(label = Name), 
+               colour = "blue", family = "NotoSerifBold", size = 7) +
+  theme_void() + 
+  coord_sf(crs = st_crs(crs_cn))
+
+ggsave('Figures/1Intro/Hubei_City.pdf', width = 10, height = 6.18)
+```
